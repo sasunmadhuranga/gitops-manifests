@@ -1,0 +1,99 @@
+---
+# ArgoCD Notifications — Email configuration
+# This configures ArgoCD's own notification system (separate from Alertmanager).
+# It sends emails directly on sync events, not based on Prometheus metrics.
+# Both systems are complementary: ArgoCD notifications = CI/CD events,
+# Alertmanager = infrastructure and health alerts.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: argocd-notifications-cm
+  namespace: argocd
+data:
+  # ── Email service ──────────────────────────────────────────────────────────
+  service.email.gmail: |
+    host: smtp.gmail.com
+    port: 587
+    from: YOUR_GMAIL@gmail.com
+    username: YOUR_GMAIL@gmail.com
+    # References the argocd-notifications-secret (created separately)
+    password:
+      secretKeyRef:
+        name: argocd-notifications-secret
+        key: email-password
+
+  # ── Notification templates ─────────────────────────────────────────────────
+  template.app-sync-succeeded: |
+    email:
+      subject: "✅ [ArgoCD] {{ .app.metadata.name }} synced successfully"
+      body: |
+        Application: {{ .app.metadata.name }}
+        Status:      Sync Succeeded
+        Environment: {{ .app.metadata.namespace }}
+        Revision:    {{ .app.status.sync.revision }}
+        Synced at:   {{ .app.status.operationState.finishedAt }}
+
+        View in ArgoCD:
+        http://localhost:8080/applications/{{ .app.metadata.name }}
+
+  template.app-sync-failed: |
+    email:
+      subject: "❌ [ArgoCD] {{ .app.metadata.name }} sync FAILED"
+      body: |
+        Application:  {{ .app.metadata.name }}
+        Status:       Sync Failed
+        Error:        {{ .app.status.operationState.message }}
+        Revision:     {{ .app.status.sync.revision }}
+
+        This usually means a Kubernetes manifest has an error.
+        Check the ArgoCD UI for details:
+        http://localhost:8080/applications/{{ .app.metadata.name }}
+
+  template.app-health-degraded: |
+    email:
+      subject: "⚠️ [ArgoCD] {{ .app.metadata.name }} is Degraded"
+      body: |
+        Application:  {{ .app.metadata.name }}
+        Health:       Degraded
+        Sync Status:  {{ .app.status.sync.status }}
+
+        One or more pods may be crash-looping or failing readiness probes.
+
+        Check pod status:
+          kubectl get pods -n gitops-app
+          kubectl describe pod <pod-name> -n gitops-app
+          kubectl logs <pod-name> -n gitops-app
+
+  template.app-deployed: |
+    email:
+      subject: "🚀 [ArgoCD] {{ .app.metadata.name }} deployed — {{ .app.status.sync.revision }}"
+      body: |
+        A new version of {{ .app.metadata.name }} was deployed.
+
+        Revision:  {{ .app.status.sync.revision }}
+        Images:    {{ range .app.status.summary.images }}{{ . }} {{ end }}
+        Deployed:  {{ .app.status.operationState.finishedAt }}
+
+  # ── Triggers — when to send each template ─────────────────────────────────
+  trigger.on-sync-succeeded: |
+    - when: app.status.operationState.phase in ['Succeeded']
+      send: [app-sync-succeeded]
+
+  trigger.on-sync-failed: |
+    - when: app.status.operationState.phase in ['Error', 'Failed']
+      send: [app-sync-failed]
+
+  trigger.on-health-degraded: |
+    - when: app.status.health.status == 'Degraded'
+      send: [app-health-degraded]
+
+  trigger.on-deployed: |
+    - when: app.status.operationState.phase in ['Succeeded'] && app.status.health.status == 'Healthy'
+      send: [app-deployed]
+
+  # ── Default subscriptions — apply to all apps ──────────────────────────────
+  # You can also set these per-app via annotations on the Application resource
+  defaultTriggers: |
+    - on-sync-failed
+    - on-health-degraded
+    - on-deployed

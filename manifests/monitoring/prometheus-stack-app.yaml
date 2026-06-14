@@ -1,0 +1,172 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: kube-prometheus-stack
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://prometheus-community.github.io/helm-charts
+    chart: kube-prometheus-stack
+    targetRevision: 58.2.2   # Pin the version — avoid surprise upgrades
+    helm:
+      valuesObject:
+        # ── Grafana ────────────────────────────────────────────────────────
+        grafana:
+          enabled: true
+          adminPassword: ""   # Leave blank — we set this via a Secret below
+          admin:
+            existingSecret: grafana-admin-secret
+            userKey: admin-user
+            passwordKey: admin-password
+          # Port-forward access only — no Ingress/ALB needed
+          service:
+            type: ClusterIP
+          # Pre-load dashboards for ArgoCD, Kubernetes, and node metrics
+          dashboardProviders:
+            dashboardproviders.yaml:
+              apiVersion: 1
+              providers:
+                - name: default
+                  orgId: 1
+                  folder: ""
+                  type: file
+                  disableDeletion: false
+                  editable: true
+                  options:
+                    path: /var/lib/grafana/dashboards/default
+          dashboards:
+            default:
+              # Official ArgoCD dashboard
+              argocd:
+                gnetId: 14584
+                revision: 1
+                datasource: Prometheus
+              # Kubernetes cluster overview
+              kubernetes-cluster:
+                gnetId: 7249
+                revision: 1
+                datasource: Prometheus
+              # Pod resource usage
+              kubernetes-pods:
+                gnetId: 6879
+                revision: 1
+                datasource: Prometheus
+              # Node exporter full
+              node-exporter:
+                gnetId: 1860
+                revision: 37
+                datasource: Prometheus
+          # Persist Grafana data (dashboards, users) across pod restarts
+          persistence:
+            enabled: true
+            size: 1Gi
+
+        # ── Prometheus ─────────────────────────────────────────────────────
+        prometheus:
+          prometheusSpec:
+            # Scrape interval — 30s is a good balance for t3.small
+            scrapeInterval: 30s
+            evaluationInterval: 30s
+            retention: 3d       # Keep 3 days of metrics — enough for a demo
+            storageSpec:
+              volumeClaimTemplate:
+                spec:
+                  accessModes: ["ReadWriteOnce"]
+                  resources:
+                    requests:
+                      storage: 5Gi
+            resources:
+              requests:
+                cpu: 100m
+                memory: 256Mi
+              limits:
+                cpu: 500m
+                memory: 512Mi
+            # Discover ServiceMonitors across all namespaces
+            serviceMonitorSelectorNilUsesHelmValues: false
+            podMonitorSelectorNilUsesHelmValues: false
+
+        # ── Alertmanager ───────────────────────────────────────────────────
+        alertmanager:
+          enabled: true
+          config:
+            global:
+              smtp_smarthost: "smtp.gmail.com:587"
+              smtp_from: "YOUR_GMAIL@gmail.com"           # <-- replace
+              smtp_auth_username: "YOUR_GMAIL@gmail.com"  # <-- replace
+              smtp_auth_password_file: /etc/alertmanager/secrets/gmail-password/password
+              smtp_require_tls: true
+            route:
+              receiver: email-receiver
+              group_by: [alertname, namespace]
+              group_wait: 30s
+              group_interval: 5m
+              repeat_interval: 12h
+              routes:
+                - matchers:
+                    - severity =~ "warning|critical"
+                  receiver: email-receiver
+            receivers:
+              - name: email-receiver
+                email_configs:
+                  - to: "YOUR_EMAIL@gmail.com"   # <-- replace
+                    send_resolved: true
+                    headers:
+                      subject: '[{{ .Status | toUpper }}] {{ .GroupLabels.alertname }} — EKS Alert'
+          alertmanagerSpec:
+            secrets:
+              - gmail-password    # Kubernetes Secret mounted at /etc/alertmanager/secrets/
+            resources:
+              requests:
+                cpu: 50m
+                memory: 64Mi
+              limits:
+                cpu: 100m
+                memory: 128Mi
+
+        # ── node-exporter ──────────────────────────────────────────────────
+        nodeExporter:
+          enabled: true   # Runs as DaemonSet — one pod per node
+
+        # ── kube-state-metrics ─────────────────────────────────────────────
+        kubeStateMetrics:
+          enabled: true   # Exposes K8s object state (deployment replicas, pod phase, etc.)
+
+        # ── Default alert rules ────────────────────────────────────────────
+        defaultRules:
+          create: true
+          rules:
+            alertmanager: true
+            etcd: false         # Not accessible on EKS managed control plane
+            configReloaders: true
+            general: true
+            kubeApiserverAvailability: true
+            kubeApiserverBurnrate: true
+            kubeApiserverHistogram: true
+            kubeApiserverSlas: true
+            kubeControllerManager: false  # Not accessible on EKS
+            kubelet: true
+            kubeProxy: false              # Not accessible on EKS
+            kubeSchedulerAlerting: false  # Not accessible on EKS
+            kubeStateMetrics: true
+            kubeStorage: true
+            network: true
+            node: true
+            nodeExporterAlerting: true
+            nodeExporterRecording: true
+            prometheus: true
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: monitoring
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true   # Required for large Helm CRD resources

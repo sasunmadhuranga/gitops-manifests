@@ -1,0 +1,128 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: gitops-app-alerts
+  namespace: monitoring
+  labels:
+    release: kube-prometheus-stack   # Must match the Prometheus selector label
+spec:
+  groups:
+    # ── ArgoCD sync alerts ────────────────────────────────────────────────────
+    - name: argocd.sync
+      rules:
+        - alert: ArgoCDAppOutOfSync
+          expr: |
+            argocd_app_info{sync_status="OutOfSync"} == 1
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "ArgoCD app {{ $labels.name }} is OutOfSync"
+            description: >
+              App {{ $labels.name }} in project {{ $labels.project }} has been
+              OutOfSync for more than 5 minutes. A commit may be waiting to sync
+              or a manual change was made to the cluster.
+
+        - alert: ArgoCDAppSyncFailed
+          expr: |
+            argocd_app_info{operation_phase="Failed"} == 1
+          for: 1m
+          labels:
+            severity: critical
+          annotations:
+            summary: "ArgoCD sync FAILED for {{ $labels.name }}"
+            description: >
+              App {{ $labels.name }} failed to sync. Check the ArgoCD UI for
+              the error details: kubectl port-forward svc/argocd-server -n argocd 8080:443
+
+        - alert: ArgoCDAppDegraded
+          expr: |
+            argocd_app_info{health_status="Degraded"} == 1
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: "ArgoCD app {{ $labels.name }} is Degraded"
+            description: >
+              App {{ $labels.name }} health is Degraded for more than 5 minutes.
+              Pods may be crash-looping or failing readiness probes.
+
+    # ── Pod / workload alerts ─────────────────────────────────────────────────
+    - name: kubernetes.pods
+      rules:
+        - alert: PodCrashLooping
+          expr: |
+            rate(kube_pod_container_status_restarts_total{namespace="gitops-app"}[10m]) * 60 > 1
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Pod {{ $labels.pod }} is crash-looping"
+            description: >
+              Container {{ $labels.container }} in pod {{ $labels.pod }}
+              (namespace {{ $labels.namespace }}) is restarting more than once
+              per minute.
+
+        - alert: PodNotReady
+          expr: |
+            kube_pod_status_ready{namespace="gitops-app", condition="true"} == 0
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Pod {{ $labels.pod }} has been NotReady for 5 minutes"
+            description: >
+              Pod {{ $labels.pod }} in namespace {{ $labels.namespace }} is not
+              passing its readiness probe. The ALB will not route traffic to it.
+
+        - alert: DeploymentReplicasMismatch
+          expr: |
+            kube_deployment_spec_replicas{namespace="gitops-app"}
+              != kube_deployment_status_available_replicas{namespace="gitops-app"}
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Deployment {{ $labels.deployment }} has fewer replicas than desired"
+            description: >
+              Deployment {{ $labels.deployment }} wants
+              {{ $value }} replicas but not all are available.
+
+    # ── Node resource alerts ───────────────────────────────────────────────────
+    - name: kubernetes.nodes
+      rules:
+        - alert: NodeMemoryPressure
+          expr: |
+            (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes) * 100 < 15
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Node {{ $labels.instance }} memory is below 15%"
+            description: >
+              Available memory on {{ $labels.instance }} is critically low.
+              On t3.small nodes this can cause OOMKill evictions.
+
+        - alert: NodeHighCPU
+          expr: |
+            100 - (avg by(instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 85
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Node {{ $labels.instance }} CPU above 85%"
+            description: >
+              CPU usage on {{ $labels.instance }} has been above 85% for 10 minutes.
+              Consider scaling the node group.
+
+        - alert: NodeDiskPressure
+          expr: |
+            (node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"}) * 100 < 20
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Node {{ $labels.instance }} disk below 20%"
+            description: >
+              Free disk on {{ $labels.instance }} root volume is below 20%.
+              Container image pulls may fail.
