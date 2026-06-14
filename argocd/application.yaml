@@ -1,0 +1,30 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: gitops-app-dev
+  namespace: argocd
+  # Finalizer ensures ArgoCD cleans up K8s resources when this Application is deleted
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+
+  source:
+    # Replace with your actual gitops-manifests repo URL
+    repoURL: https://github.com/YOUR_GITHUB_USERNAME/gitops-manifests
+    targetRevision: main
+    # ArgoCD watches the dev overlay — Kustomize is auto-detected
+    path: manifests/app/overlays/dev
+
+  destination:
+    server: https://kubernetes.default.svc   # The EKS cluster ArgoCD is running in
+    namespace: gitops-app
+
+  syncPolicy:
+    automated:
+      prune: true       # Delete K8s resources removed from Git
+      selfHeal: true    # Revert any manual kubectl changes back to Git state
+    syncOptions:
+      - CreateNamespace=true    # Creates gitops-app namespace if it doesn't exist
+      - PrunePropagationPolicy=foreground
+      - PruneLast=true
