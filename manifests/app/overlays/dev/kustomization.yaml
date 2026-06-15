@@ -21,4 +21,4 @@ patches:
         name: gitops-app
         namespace: gitops-app
       spec:
-        replicas: 2
+        replicas: 1
