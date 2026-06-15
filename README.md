@@ -47,14 +47,14 @@ This project uses 3 separate repos:
 ### 1. Replace placeholder values
 
 In `manifests/app/overlays/dev/kustomization.yaml` and `overlays/prod/kustomization.yaml`:
-- Replace `REPLACE_WITH_YOUR_ECR_URL` with the actual ECR URL from `terraform output ecr_repository_url`
+- Replace ECR_URL with the actual ECR URL from `terraform output ecr_repository_url`
 
 In `argocd/application.yaml` and `monitoring-apps.yaml`:
-- Replace `YOUR_GITHUB_USERNAME` with your GitHub username
+- Replace your GitHub username
 
 In `manifests/monitoring/prometheus-stack-app.yaml` and `manifests/argocd-notifications/notifications-cm.yaml`:
-- Replace `YOUR_GMAIL@gmail.com` with your Gmail address
-- Replace `YOUR_EMAIL@gmail.com` with the email to receive alerts
+- Replace gmail with your Gmail address
+- Replace gmail with your gmail to receive alerts
 
 ### 2. Create Kubernetes secrets (before applying manifests)
 
@@ -259,3 +259,23 @@ kubectl delete svc --all -n gitops-app
 cd gitops-infra
 terraform destroy
 ```
+
+---
+## 📸 Screenshots
+<p align="center">
+    <img src="screenshots/1.jpg" width="600"/>
+    <img src="screenshots/2.jpg" width="600"/>
+    <img src="screenshots/4.jpg" width="600"/>
+    <img src="screenshots/5.jpg" width="600"/>
+    <img src="screenshots/8.png" width="600"/>
+    <img src="screenshots/9.png" width="600"/>
+    <img src="screenshots/12.png" width="600"/>
+    <img src="screenshots/16.png" width="600"/>
+</p>
+
+---
+
+## Author
+Sasun Madhuranga
+
+GitHub: https://github.com/sasunmadhuranga
