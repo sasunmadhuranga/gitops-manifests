@@ -6,21 +6,20 @@ metadata:
   labels:
     app: gitops-app
 spec:
-  replicas: 2                   # One pod per AZ — matches your 2-node setup
+  replicas: 1
   selector:
     matchLabels:
       app: gitops-app
   strategy:
     type: RollingUpdate
     rollingUpdate:
-      maxSurge: 1               # Allow 1 extra pod during update
-      maxUnavailable: 0         # Never take a pod down before replacement is ready
+      maxSurge: 1
+      maxUnavailable: 0
   template:
     metadata:
       labels:
         app: gitops-app
     spec:
-      # Spread pods across both AZs so a single AZ outage doesn't take down the app
       topologySpreadConstraints:
         - maxSkew: 1
           topologyKey: topology.kubernetes.io/zone
@@ -30,31 +29,29 @@ spec:
               app: gitops-app
       containers:
         - name: gitops-app
-          # IMAGE_TAG is replaced by GitHub Actions on every push
-          # Format: <account>.dkr.ecr.us-east-1.amazonaws.com/gitops-argocd-dev-gitops-app:sha-<commit>
           image: 630596767614.dkr.ecr.us-east-1.amazonaws.com/gitops-argocd-dev-gitops-app
           ports:
-            - containerPort: 8000    # Change this if your FastAPI/Flask app uses a different port
+            - containerPort: 8000
           env:
-        - name: PORT
-          value: "8000"
-        - name: ENVIRONMENT
-          value: "dev"
-        - name: GROQ_API_KEY
-          valueFrom:
-            secretKeyRef:
-              name: gitops-app-secrets
-              key: GROQ_API_KEY
+            - name: PORT
+              value: "8000"
+            - name: ENVIRONMENT
+              value: "dev"
+            - name: GROQ_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: gitops-app-secrets
+                  key: GROQ_API_KEY
           resources:
             requests:
-              cpu: "100m"            # 0.1 CPU core — light enough for t3.small
+              cpu: "100m"
               memory: "128Mi"
             limits:
               cpu: "300m"
               memory: "256Mi"
           readinessProbe:
             httpGet:
-              path: /health          # Add a GET /health route to your Python app if not present
+              path: /health
               port: 8000
             initialDelaySeconds: 10
             periodSeconds: 5
