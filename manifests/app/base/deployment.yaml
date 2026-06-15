@@ -32,7 +32,7 @@ spec:
         - name: gitops-app
           # IMAGE_TAG is replaced by GitHub Actions on every push
           # Format: <account>.dkr.ecr.us-east-1.amazonaws.com/gitops-argocd-dev-gitops-app:sha-<commit>
-          image: PLACEHOLDER_IMAGE
+          image: 630596767614.dkr.ecr.us-east-1.amazonaws.com/gitops-argocd-dev-gitops-app
           ports:
             - containerPort: 8000    # Change this if your FastAPI/Flask app uses a different port
           env:

@@ -8,10 +8,22 @@ bases:
 # GitHub Actions updates ONLY this line on every push.
 # The value below is a placeholder — it will be replaced by CI on first deploy.
 images:
+<<<<<<< HEAD
   - name: 630596767614.dkr.ecr.us-east-1.amazonaws.com/gitops-argocd-dev-gitops-app
     newName: 630596767614.dkr.ecr.us-east-1.amazonaws.com/gitops-argocd-dev-gitops-app   # e.g. 123456789.dkr.ecr.us-east-1.amazonaws.com/gitops-argocd-dev-gitops-app
     newTag: latest                        # GitHub Actions replaces this with sha-<commit>
 
+=======
+  - name: PLACEHOLDER_IMAGE
+<<<<<<< HEAD
+    newName: REPLACE_WITH_YOUR_ECR_URL # e.g. 123456789.dkr.ecr.us-east-1.amazonaws.com/gitops-argocd-dev-gitops-app
+    newTag: latest # GitHub Actions replaces this with sha-<commit>
+=======
+    newName: 630596767614.dkr.ecr.us-east-1.amazonaws.com/gitops-argocd-dev-gitops-app   # e.g. 123456789.dkr.ecr.us-east-1.amazonaws.com/gitops-argocd-dev-gitops-app
+    newTag: latest                        # GitHub Actions replaces this with sha-<commit>
+
+>>>>>>> 3cf0a34 (Updated)
+>>>>>>> d984ba0 (Updated)
 # Dev-specific patches
 patches:
   - patch: |-

@@ -95,8 +95,8 @@ spec:
           config:
             global:
               smtp_smarthost: "smtp.gmail.com:587"
-              smtp_from: "YOUR_GMAIL@gmail.com"           # <-- replace
-              smtp_auth_username: "YOUR_GMAIL@gmail.com"  # <-- replace
+              smtp_from: "gsimadhuranga@gmail.com"           # <-- replace
+              smtp_auth_username: "gsimadhuranga@gmail.com"  # <-- replace
               smtp_auth_password_file: /etc/alertmanager/secrets/gmail-password/password
               smtp_require_tls: true
             route:
@@ -112,7 +112,7 @@ spec:
             receivers:
               - name: email-receiver
                 email_configs:
-                  - to: "YOUR_EMAIL@gmail.com"   # <-- replace
+                  - to: "gsimadhuranga@gmail.com"   # <-- replace
                     send_resolved: true
                     headers:
                       subject: '[{{ .Status | toUpper }}] {{ .GroupLabels.alertname }} — EKS Alert'

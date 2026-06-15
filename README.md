@@ -67,7 +67,7 @@ GitHub → Settings → Developer settings → Personal access tokens → Fine-g
 ## How a deployment works
 
 ```
-1. You push to main in python-backend-app
+1. You push to master in python-backend-app
 2. GitHub Actions builds the Docker image and pushes to ECR with tag sha-<commit>
 3. GitHub Actions checks out THIS repo and updates newTag in overlays/dev/kustomization.yaml
 4. GitHub Actions commits and pushes that single-line change

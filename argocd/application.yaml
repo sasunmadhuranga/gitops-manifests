@@ -12,7 +12,7 @@ spec:
   source:
     # Replace with your actual gitops-manifests repo URL
     repoURL: https://github.com/sasunmadhurangaE/gitops-manifests
-    targetRevision: main
+    targetRevision: master
     # ArgoCD watches the dev overlay — Kustomize is auto-detected
     path: manifests/app/overlays/dev
 

@@ -14,8 +14,8 @@ data:
   service.email.gmail: |
     host: smtp.gmail.com
     port: 587
-    from: YOUR_GMAIL@gmail.com
-    username: YOUR_GMAIL@gmail.com
+    from: gsimadhuranga@gmail.com
+    username: gsimadhuranga@gmail.com
     # References the argocd-notifications-secret (created separately)
     password:
       secretKeyRef:

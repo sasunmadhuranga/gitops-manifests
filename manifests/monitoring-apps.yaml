@@ -13,7 +13,7 @@ spec:
   project: default
   source:
     repoURL: https://github.com/sasunmadhuranga/gitops-manifests
-    targetRevision: main
+    targetRevision: master
     path: manifests/monitoring
   destination:
     server: https://kubernetes.default.svc
@@ -27,7 +27,7 @@ spec:
       - ServerSideApply=true
 
 ---
-# ArgoCD Notifications controller (installed separately from the main ArgoCD install)
+# ArgoCD Notifications controller (installed separately from the master ArgoCD install)
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
@@ -39,7 +39,7 @@ spec:
   project: default
   source:
     repoURL: https://github.com/sasunmadhuranga/gitops-manifests
-    targetRevision: main
+    targetRevision: master
     path: manifests/argocd-notifications
   destination:
     server: https://kubernetes.default.svc
