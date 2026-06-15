@@ -9,21 +9,38 @@ No one deploys manually — all changes go through Git.
 ```
 gitops-manifests/
 ├── argocd/
-│   └── application.yaml          ← Apply once to register the app with ArgoCD
-└── manifests/
-    └── app/
-        ├── base/                 ← Shared manifests (Deployment, Service, Ingress, Namespace)
-        │   ├── kustomization.yaml
-        │   ├── namespace.yaml
-        │   ├── deployment.yaml
-        │   ├── service.yaml
-        │   └── ingress.yaml
-        └── overlays/
-            ├── dev/              ← Dev environment (ArgoCD watches this)
-            │   └── kustomization.yaml   ← GitHub Actions updates newTag here
-            └── prod/             ← Prod environment (manual PR to promote)
-                └── kustomization.yaml
+│   └── application.yaml               ← Apply once to register the app with ArgoCD
+├── manifests/
+│   ├── app/
+│   │   ├── base/                      ← Shared app manifests
+│   │   │   ├── kustomization.yaml
+│   │   │   ├── namespace.yaml
+│   │   │   ├── deployment.yaml
+│   │   │   ├── service.yaml
+│   │   │   └── ingress.yaml
+│   │   └── overlays/
+│   │       ├── dev/                   ← Dev environment (ArgoCD watches this)
+│   │       │   └── kustomization.yaml ← GitHub Actions updates newTag here
+│   │       └── prod/                  ← Prod environment (manual PR to promote)
+│   │           └── kustomization.yaml
+│   ├── monitoring/                    ← Prometheus + Grafana + Alertmanager
+│   │   ├── prometheus-stack-app.yaml  ← kube-prometheus-stack Helm values
+│   │   ├── argocd-servicemonitor.yaml ← Scrapes ArgoCD metrics into Prometheus
+│   │   └── alert-rules.yaml          ← Custom PrometheusRules (pod, node, ArgoCD)
+│   └── argocd-notifications/          ← ArgoCD email notification config
+│       └── notifications-cm.yaml      ← Templates + triggers for sync events
+└── monitoring-apps.yaml               ← ArgoCD Applications for monitoring stack
 ```
+
+## Repositories overview
+
+This project uses 3 separate repos:
+
+| Repo | Purpose | Who writes to it |
+|---|---|---|
+| `python-backend-app` | App source code + Dockerfile + GitHub Actions | Developer |
+| `gitops-infra` | Terraform (VPC, EKS, ECR, IAM) | Developer (manual) |
+| `gitops-manifests` (this repo) | K8s manifests — source of truth for cluster state | GitHub Actions (image tag) + Developer (config changes) |
 
 ## One-time setup
 
@@ -32,26 +49,66 @@ gitops-manifests/
 In `manifests/app/overlays/dev/kustomization.yaml` and `overlays/prod/kustomization.yaml`:
 - Replace `REPLACE_WITH_YOUR_ECR_URL` with the actual ECR URL from `terraform output ecr_repository_url`
 
-In `argocd/application.yaml`:
+In `argocd/application.yaml` and `monitoring-apps.yaml`:
 - Replace `YOUR_GITHUB_USERNAME` with your GitHub username
 
-### 2. Register the app with ArgoCD
+In `manifests/monitoring/prometheus-stack-app.yaml` and `manifests/argocd-notifications/notifications-cm.yaml`:
+- Replace `YOUR_GMAIL@gmail.com` with your Gmail address
+- Replace `YOUR_EMAIL@gmail.com` with the email to receive alerts
+
+### 2. Create Kubernetes secrets (before applying manifests)
+
+These must be created manually — never commit real credentials to Git:
+
+```bash
+# Grafana admin credentials
+kubectl create secret generic grafana-admin-secret \
+  --namespace monitoring \
+  --from-literal=admin-user=admin \
+  --from-literal=admin-password='YOUR_GRAFANA_PASSWORD'
+
+# Gmail App Password for Alertmanager
+# Get one at: https://myaccount.google.com/apppasswords
+kubectl create secret generic gmail-password \
+  --namespace monitoring \
+  --from-literal=password='YOUR_GMAIL_APP_PASSWORD'
+
+# Gmail App Password for ArgoCD Notifications
+kubectl create secret generic argocd-notifications-secret \
+  --namespace argocd \
+  --from-literal=email-password='YOUR_GMAIL_APP_PASSWORD'
+
+# App secret (Groq API key)
+kubectl create secret generic gitops-app-secrets \
+  --namespace gitops-app \
+  --from-literal=GROQ_API_KEY='YOUR_GROQ_API_KEY'
+```
+
+### 3. Register the app with ArgoCD
 
 ```bash
 # Make sure kubectl is pointing at your EKS cluster
 aws eks update-kubeconfig --region us-east-1 --name gitops-argocd-dev-cluster
 
-# Apply the ArgoCD Application resource
+# Add gitops-manifests repo credentials (required if repo is private)
+argocd repo add https://github.com/YOUR_GITHUB_USERNAME/gitops-manifests \
+  --username YOUR_GITHUB_USERNAME \
+  --password YOUR_GITHUB_PAT
+
+# Apply the ArgoCD Application for your app
 kubectl apply -f argocd/application.yaml
 
-# Watch ArgoCD sync in the UI (port-forward if not already open)
+# Apply the monitoring ArgoCD Applications
+kubectl apply -f monitoring-apps.yaml
+
+# Watch ArgoCD sync in the UI
 kubectl port-forward svc/argocd-server -n argocd 8080:443
-# Open http://localhost:8080 → app should appear and start syncing
+# Open http://localhost:8080
 ```
 
-### 3. Set up GitHub secrets in your app repo
+### 4. Set up GitHub secrets in your app repo
 
-Go to your **python-backend-app** repo → Settings → Secrets and variables → Actions:
+Go to **python-backend-app** repo → Settings → Secrets and variables → Actions:
 
 | Secret | Value |
 |---|---|
@@ -61,31 +118,144 @@ Go to your **python-backend-app** repo → Settings → Secrets and variables �
 
 To create a fine-grained PAT:
 GitHub → Settings → Developer settings → Personal access tokens → Fine-grained tokens → New token
-- Repository access: Only select `gitops-manifests`
+- Repository access: only select `gitops-manifests`
 - Permissions: Contents → Read and write
 
 ## How a deployment works
 
 ```
 1. You push to master in python-backend-app
-2. GitHub Actions builds the Docker image and pushes to ECR with tag sha-<commit>
-3. GitHub Actions checks out THIS repo and updates newTag in overlays/dev/kustomization.yaml
-4. GitHub Actions commits and pushes that single-line change
-5. ArgoCD detects the new commit (polls every 3 min by default)
-6. ArgoCD applies the updated manifests to the EKS cluster
-7. Kubernetes performs a rolling update — zero downtime
+2. GitHub Actions builds Docker image → pushes to ECR with tag sha-<commit>
+3. GitHub Actions checks out THIS repo
+4. GitHub Actions updates newTag in overlays/dev/kustomization.yaml
+5. GitHub Actions commits and pushes that single-line change
+6. ArgoCD detects the new commit (polls every 3 min by default)
+7. ArgoCD applies updated manifests to EKS cluster
+8. Kubernetes performs a rolling update — zero downtime
+9. Prometheus scrapes new pod metrics automatically
+10. ArgoCD sends email notification on sync success
+```
+
+## Monitoring stack
+
+The monitoring stack is also managed by ArgoCD (GitOps all the way down).
+
+### What's installed
+
+| Component | Namespace | Purpose |
+|---|---|---|
+| Prometheus | monitoring | Scrapes metrics from nodes, pods, ArgoCD |
+| Grafana | monitoring | Dashboards for cluster and pipeline visibility |
+| Alertmanager | monitoring | Sends email when alert rules fire |
+| kube-state-metrics | monitoring | Exposes K8s object state |
+| node-exporter | monitoring | Exposes raw node metrics |
+| ArgoCD Notifications | argocd | Emails on sync success/failure/degraded |
+
+### Pre-loaded Grafana dashboards
+
+| Dashboard | ID | What it shows |
+|---|---|---|
+| ArgoCD | 14584 | Sync status, app health, operation history |
+| Kubernetes Cluster | 7249 | Node count, pod count, resource usage |
+| Kubernetes Pods | 6879 | Per-pod CPU and memory |
+| Node Exporter Full | 1860 | Detailed node metrics |
+
+### Alert rules
+
+| Alert | Condition | Severity |
+|---|---|---|
+| ArgoCDAppOutOfSync | OutOfSync > 5 min | warning |
+| ArgoCDAppSyncFailed | Sync phase = Failed | critical |
+| ArgoCDAppDegraded | Health = Degraded > 5 min | critical |
+| PodCrashLooping | Restart rate > 1/min | critical |
+| PodNotReady | Not ready > 5 min | warning |
+| NodeMemoryPressure | Free memory < 15% | warning |
+| NodeHighCPU | CPU > 85% for 10 min | warning |
+| NodeDiskPressure | Free disk < 20% | warning |
+
+### Access monitoring UIs (port-forward)
+
+Run each in a separate terminal and keep them open:
+
+```bash
+# ArgoCD → http://localhost:8080
+kubectl port-forward svc/argocd-server -n argocd 8080:443
+
+# Grafana → http://localhost:3000  (admin / your password)
+kubectl port-forward svc/kube-prometheus-stack-grafana -n monitoring 3000:80
+
+# Prometheus → http://localhost:9090
+kubectl port-forward svc/kube-prometheus-stack-prometheus -n monitoring 9090:9090
+
+# Alertmanager → http://localhost:9093
+kubectl port-forward svc/kube-prometheus-stack-alertmanager -n monitoring 9093:9093
+```
+
+### Useful Prometheus queries
+
+```promql
+# App pod health
+kube_pod_status_ready{namespace="gitops-app"}
+
+# App CPU usage
+rate(container_cpu_usage_seconds_total{namespace="gitops-app"}[5m])
+
+# App memory usage
+container_memory_usage_bytes{namespace="gitops-app"}
+
+# ArgoCD sync status
+argocd_app_info
+
+# Node memory available %
+(node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes) * 100
+
+# Pod restart count
+kube_pod_container_status_restarts_total{namespace="gitops-app"}
+
+# All firing alerts
+ALERTS{alertstate="firing"}
 ```
 
 ## Rolling back a bad deploy
 
 ```bash
-# Option 1: Revert the last commit in this repo
+# Option 1: Revert the last commit (ArgoCD auto-syncs the rollback)
 git revert HEAD
-git push
-# ArgoCD detects the revert and rolls the cluster back automatically
+git push origin master
 
-# Option 2: Manually set a specific tag
+# Option 2: Set a specific previous image tag
 # Edit overlays/dev/kustomization.yaml → change newTag to a previous sha-xxxxx
 git commit -am "rollback: revert to sha-abc1234"
-git push
+git push origin master
+
+# Option 3: Rollback via ArgoCD UI
+# ArgoCD → gitops-app-dev → History tab → click previous version → Rollback
+```
+
+## Node resource management (t3.small)
+
+`t3.small` nodes have a pod limit of ~11 per node. If pods go Pending:
+
+```bash
+# Check total pod count
+kubectl get pods -A --no-headers | wc -l
+
+# Free up slots by scaling non-critical components
+kubectl scale deployment aws-load-balancer-controller -n kube-system --replicas=1
+kubectl scale deployment coredns -n kube-system --replicas=1
+
+# Scale app to 1 replica for demo
+kubectl scale deployment gitops-app -n gitops-app --replicas=1
+```
+
+## Teardown
+
+```bash
+# Delete K8s resources first (releases ALB and EBS volumes)
+kubectl delete ingress --all -A
+kubectl delete svc --all -n gitops-app
+
+# Destroy all AWS infrastructure
+cd gitops-infra
+terraform destroy
 ```
