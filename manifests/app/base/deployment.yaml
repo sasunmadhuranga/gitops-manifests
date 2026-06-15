@@ -36,10 +36,15 @@ spec:
           ports:
             - containerPort: 8000    # Change this if your FastAPI/Flask app uses a different port
           env:
-            - name: PORT
-              value: "8000"
-            - name: ENVIRONMENT
-              value: "dev"
+        - name: PORT
+          value: "8000"
+        - name: ENVIRONMENT
+          value: "dev"
+        - name: GROQ_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: gitops-app-secrets
+              key: GROQ_API_KEY
           resources:
             requests:
               cpu: "100m"            # 0.1 CPU core — light enough for t3.small
