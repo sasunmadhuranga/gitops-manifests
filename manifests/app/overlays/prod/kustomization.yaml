@@ -5,8 +5,8 @@ bases:
   - ../../base
 
 images:
-  - name: PLACEHOLDER_IMAGE
-    newName: REPLACE_WITH_YOUR_ECR_URL
+  - name: 630596767614.dkr.ecr.us-east-1.amazonaws.com/gitops-argocd-dev-gitops-app
+    newName: 630596767614.dkr.ecr.us-east-1.amazonaws.com/gitops-argocd-dev-gitops-app
     newTag: latest   # Prod promotion is a manual PR that updates this tag
 
 patches:
