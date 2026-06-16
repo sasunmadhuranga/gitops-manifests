@@ -10,7 +10,6 @@ spec:
   project: default
 
   source:
-    # Replace with your actual gitops-manifests repo URL
     repoURL: https://github.com/sasunmadhurangaE/gitops-manifests
     targetRevision: master
     # ArgoCD watches the dev overlay — Kustomize is auto-detected

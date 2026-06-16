@@ -13,7 +13,7 @@ spec:
     targetRevision: 58.2.2   # Pin the version — avoid surprise upgrades
     helm:
       valuesObject:
-        # ── Grafana ────────────────────────────────────────────────────────
+        # Grafana 
         grafana:
           enabled: true
           adminPassword: ""   # Leave blank — we set this via a Secret below
@@ -64,7 +64,7 @@ spec:
             enabled: true
             size: 1Gi
 
-        # ── Prometheus ─────────────────────────────────────────────────────
+        # Prometheus 
         prometheus:
           prometheusSpec:
             # Scrape interval — 30s is a good balance for t3.small
@@ -89,14 +89,14 @@ spec:
             serviceMonitorSelectorNilUsesHelmValues: false
             podMonitorSelectorNilUsesHelmValues: false
 
-        # ── Alertmanager ───────────────────────────────────────────────────
+        # Alertmanager 
         alertmanager:
           enabled: true
           config:
             global:
               smtp_smarthost: "smtp.gmail.com:587"
-              smtp_from: "gsimadhuranga@gmail.com"           # <-- replace
-              smtp_auth_username: "gsimadhuranga@gmail.com"  # <-- replace
+              smtp_from: ".......@gmail.com"           
+              smtp_auth_username: ".........@gmail.com"  
               smtp_auth_password_file: /etc/alertmanager/secrets/gmail-password/password
               smtp_require_tls: true
             route:
@@ -112,7 +112,7 @@ spec:
             receivers:
               - name: email-receiver
                 email_configs:
-                  - to: "gsimadhuranga@gmail.com"   # <-- replace
+                  - to: ".......@gmail.com"  
                     send_resolved: true
                     headers:
                       subject: '[{{ .Status | toUpper }}] {{ .GroupLabels.alertname }} — EKS Alert'
@@ -127,15 +127,15 @@ spec:
                 cpu: 100m
                 memory: 128Mi
 
-        # ── node-exporter ──────────────────────────────────────────────────
+        # node-exporter
         nodeExporter:
           enabled: true   # Runs as DaemonSet — one pod per node
 
-        # ── kube-state-metrics ─────────────────────────────────────────────
+        # kube-state-metrics
         kubeStateMetrics:
           enabled: true   # Exposes K8s object state (deployment replicas, pod phase, etc.)
 
-        # ── Default alert rules ────────────────────────────────────────────
+        # Default alert rules 
         defaultRules:
           create: true
           rules:

@@ -6,8 +6,6 @@ metadata:
   labels:
     app: gitops-app
 spec:
-  # ClusterIP means the service is only reachable inside the cluster.
-  # The ALB (Ingress) is what exposes it to the internet — not this service directly.
   type: ClusterIP
   selector:
     app: gitops-app
@@ -15,4 +13,4 @@ spec:
     - name: http
       protocol: TCP
       port: 80          # Port the ALB talks to the Service on
-      targetPort: 8000  # Port your container listens on
+      targetPort: 8000  # Port container listens on

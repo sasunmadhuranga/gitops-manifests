@@ -7,7 +7,7 @@ metadata:
     release: kube-prometheus-stack   # Must match the Prometheus selector label
 spec:
   groups:
-    # ── ArgoCD sync alerts ────────────────────────────────────────────────────
+    # ArgoCD sync alerts 
     - name: argocd.sync
       rules:
         - alert: ArgoCDAppOutOfSync
@@ -47,7 +47,7 @@ spec:
               App {{ $labels.name }} health is Degraded for more than 5 minutes.
               Pods may be crash-looping or failing readiness probes.
 
-    # ── Pod / workload alerts ─────────────────────────────────────────────────
+    # Pod / workload alerts
     - name: kubernetes.pods
       rules:
         - alert: PodCrashLooping
@@ -88,7 +88,7 @@ spec:
               Deployment {{ $labels.deployment }} wants
               {{ $value }} replicas but not all are available.
 
-    # ── Node resource alerts ───────────────────────────────────────────────────
+    # Node resource alerts 
     - name: kubernetes.nodes
       rules:
         - alert: NodeMemoryPressure

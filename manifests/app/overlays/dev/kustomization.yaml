@@ -1,18 +1,16 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
-# Point to the base manifests
 bases:
   - ../../base
 
 # GitHub Actions updates ONLY this line on every push.
 # The value below is a placeholder — it will be replaced by CI on first deploy.
 images:
-  - name: 630596767614.dkr.ecr.us-east-1.amazonaws.com/gitops-argocd-dev-gitops-app
-    newName: 630596767614.dkr.ecr.us-east-1.amazonaws.com/gitops-argocd-dev-gitops-app   # e.g. 123456789.dkr.ecr.us-east-1.amazonaws.com/gitops-argocd-dev-gitops-app
+  - name: ............dkr.ecr.us-east-1.amazonaws.com/gitops-argocd-dev-gitops-app
+    newName: ............dkr.ecr.us-east-1.amazonaws.com/gitops-argocd-dev-gitops-app  
     newTag: latest                        # GitHub Actions replaces this with sha-<commit>
 
-# Dev-specific patches
 patches:
   - patch: |-
       apiVersion: apps/v1

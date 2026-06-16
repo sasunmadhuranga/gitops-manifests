@@ -10,19 +10,17 @@ metadata:
   name: argocd-notifications-cm
   namespace: argocd
 data:
-  # ── Email service ──────────────────────────────────────────────────────────
   service.email.gmail: |
     host: smtp.gmail.com
     port: 587
-    from: gsimadhuranga@gmail.com
-    username: gsimadhuranga@gmail.com
+    from: ...........@gmail.com
+    username: ...........@gmail.com
     # References the argocd-notifications-secret (created separately)
     password:
       secretKeyRef:
         name: argocd-notifications-secret
         key: email-password
 
-  # ── Notification templates ─────────────────────────────────────────────────
   template.app-sync-succeeded: |
     email:
       subject: "✅ [ArgoCD] {{ .app.metadata.name }} synced successfully"
@@ -74,7 +72,6 @@ data:
         Images:    {{ range .app.status.summary.images }}{{ . }} {{ end }}
         Deployed:  {{ .app.status.operationState.finishedAt }}
 
-  # ── Triggers — when to send each template ─────────────────────────────────
   trigger.on-sync-succeeded: |
     - when: app.status.operationState.phase in ['Succeeded']
       send: [app-sync-succeeded]
@@ -91,8 +88,6 @@ data:
     - when: app.status.operationState.phase in ['Succeeded'] && app.status.health.status == 'Healthy'
       send: [app-deployed]
 
-  # ── Default subscriptions — apply to all apps ──────────────────────────────
-  # You can also set these per-app via annotations on the Application resource
   defaultTriggers: |
     - on-sync-failed
     - on-health-degraded

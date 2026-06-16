@@ -29,7 +29,7 @@ spec:
               app: gitops-app
       containers:
         - name: gitops-app
-          image: 630596767614.dkr.ecr.us-east-1.amazonaws.com/gitops-argocd-dev-gitops-app
+          image: ............dkr.ecr.us-east-1.amazonaws.com/gitops-argocd-dev-gitops-app
           ports:
             - containerPort: 8000
           env:
