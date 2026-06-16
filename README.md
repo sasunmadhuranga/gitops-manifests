@@ -2,7 +2,7 @@
 
 Kubernetes manifests for the GitOps + ArgoCD on EKS project.
 This is the **source of truth** for what is deployed to the cluster.
-No one deploys manually — all changes go through Git.
+No one deploys manually, all changes go through Git.
 
 ## Structure
 
@@ -58,7 +58,7 @@ In `manifests/monitoring/prometheus-stack-app.yaml` and `manifests/argocd-notifi
 
 ### 2. Create Kubernetes secrets (before applying manifests)
 
-These must be created manually — never commit real credentials to Git:
+These must be created manually. Never commit real credentials to Git:
 
 ```bash
 # Grafana admin credentials
