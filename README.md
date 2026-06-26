@@ -263,6 +263,16 @@ terraform destroy
 
 ---
 
+---
+
+### Other repositories related to this project
+<p align="center">
+  <a href="https://github.com/sasunmadhuranga/gitops-infra">GitOps ArgoCD — Terraform Infrastructure</a>
+  <a href="https://github.com/sasunmadhuranga/python-backend-app">python-backend-app</a>
+</p>
+
+---
+
 ## Author
 Sasun Madhuranga
 
