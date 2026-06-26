@@ -4,6 +4,12 @@ Kubernetes manifests for the GitOps + ArgoCD on EKS project.
 This is the **source of truth** for what is deployed to the cluster.
 No one deploys manually, all changes go through Git.
 
+## Full Project Architecture
+
+<p align="center">
+    <img src="screenshots/diagram.png" width="600"/>
+</p>
+
 ## Structure
 
 ---
