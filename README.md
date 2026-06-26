@@ -6,31 +6,13 @@ No one deploys manually, all changes go through Git.
 
 ## Structure
 
-```
-gitops-manifests/
-├── argocd/
-│   └── application.yaml               ← Apply once to register the app with ArgoCD
-├── manifests/
-│   ├── app/
-│   │   ├── base/                      ← Shared app manifests
-│   │   │   ├── kustomization.yaml
-│   │   │   ├── namespace.yaml
-│   │   │   ├── deployment.yaml
-│   │   │   ├── service.yaml
-│   │   │   └── ingress.yaml
-│   │   └── overlays/
-│   │       ├── dev/                   ← Dev environment (ArgoCD watches this)
-│   │       │   └── kustomization.yaml ← GitHub Actions updates newTag here
-│   │       └── prod/                  ← Prod environment (manual PR to promote)
-│   │           └── kustomization.yaml
-│   ├── monitoring/                    ← Prometheus + Grafana + Alertmanager
-│   │   ├── prometheus-stack-app.yaml  ← kube-prometheus-stack Helm values
-│   │   ├── argocd-servicemonitor.yaml ← Scrapes ArgoCD metrics into Prometheus
-│   │   └── alert-rules.yaml          ← Custom PrometheusRules (pod, node, ArgoCD)
-│   └── argocd-notifications/          ← ArgoCD email notification config
-│       └── notifications-cm.yaml      ← Templates + triggers for sync events
-└── monitoring-apps.yaml               ← ArgoCD Applications for monitoring stack
-```
+---
+
+<p align="center">
+    <img src="screenshots/Structure.png" width="600"/>
+</p>
+
+---
 
 ## Repositories overview
 
